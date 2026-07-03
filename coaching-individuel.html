@@ -1386,7 +1386,12 @@ async function loadCharts() {
   el.innerHTML = html || '<p class="muted">Aucune donnée pour l’instant.</p>';
 }
 
-attachSuggest($('#sExo'), ['Squat', 'Développé couché', 'Soulevé de terre', 'Tirage horizontal', 'Développé militaire', 'Fentes', 'Rowing', 'Traction']);
+attachSuggest($('#sExo'), [
+  { cat: 'Bas du corps', items: ['Squat', 'Soulevé de terre', 'Soulevé de terre roumain', 'Fentes', 'Presse à cuisses', 'Hip thrust', 'Leg curl', 'Mollets'] },
+  { cat: 'Poussée', items: ['Développé couché', 'Développé incliné', 'Développé militaire', 'Dips', 'Écarté couché', 'Extension triceps'] },
+  { cat: 'Tirage', items: ['Tirage horizontal', 'Rowing', 'Traction', 'Tirage vertical', 'Curl biceps', 'Shrugs'] },
+  { cat: 'Gainage / Abdos', items: ['Gainage', 'Crunch', 'Relevé de jambes', 'Russian Twist'] },
+]);
 attachSuggest($('#crType'), ['Course à pied', 'Vélo', 'Rameur', 'Elliptique', 'Marche', 'Corde à sauter', 'Tapis de course', 'Vélo elliptique']);
 attachSuggest($('#wExo'), [
   { cat: 'Bas du corps', items: ['Squat Jumps', 'Tuck Jump', 'Box Jump', 'Air Squat', 'Montées de genoux', 'Talons-fesses', 'Step-ups', 'Fentes sautées'] },
