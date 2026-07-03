@@ -166,6 +166,19 @@
   .chip button{background:none;border:none;color:var(--muted);min-height:0;padding:.1rem .3rem;font-size:.9rem;border-radius:50%;cursor:pointer}
   .chip button:hover{color:var(--z5)}
   .typebadge{display:inline-block;background:var(--sand);color:var(--ink);border-radius:6px;padding:.1rem .5rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-right:.4rem}
+  details.sessionReport{border-top:1px solid var(--line);padding:.65rem 0}
+  details.sessionReport:first-of-type{border-top:none}
+  details.sessionReport summary{
+    cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;
+    gap:.6rem;font-size:.9rem;
+  }
+  details.sessionReport summary::-webkit-details-marker{display:none}
+  details.sessionReport summary::after{content:'+';color:var(--muted);font-weight:700;font-size:1.15rem;flex:none;margin-left:.5rem}
+  details.sessionReport[open] summary::after{content:'\2212'}
+  details.sessionReport .reportbody{margin-top:.75rem;padding-top:.7rem;border-top:1px dashed var(--line);font-size:.88rem}
+  details.sessionReport .reportbody h5{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:.8rem 0 .35rem}
+  details.sessionReport .reportbody h5:first-child{margin-top:0}
+  .repline{display:flex;justify-content:space-between;gap:.6rem;padding:.25rem 0;font-variant-numeric:tabular-nums}
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -429,16 +442,10 @@
       <!-- Historique -->
       <section data-cvpanel="histo" hidden>
         <div class="panel">
-          <h3>Séances passées</h3>
+          <h3>Rapports de séance</h3>
+          <p class="note" style="margin-top:0">Clique sur une séance pour voir le détail complet — fréquence
+            cardiaque, renforcement musculaire, cardio et conditionnement.</p>
           <div class="hist" id="histSessions"><p class="muted">Chargement…</p></div>
-        </div>
-        <div class="panel">
-          <h3>Cardio</h3>
-          <div class="hist" id="histCardio"><p class="muted">Chargement…</p></div>
-        </div>
-        <div class="panel">
-          <h3>Formats — AMRAP / EMOM / FOR TIME</h3>
-          <div class="hist" id="histWod"><p class="muted">Chargement…</p></div>
         </div>
       </section>
 
@@ -1138,49 +1145,66 @@ function stopLiveSession(silent) {
 /* =====================================================================
    Historique
    ===================================================================== */
+function sessionReportHTML(s, ownSets, ownCardio, ownWods) {
+  const tonnage = ownSets.reduce((a, r) => a + Number(r.tonnage), 0);
+  const cardioMin = ownCardio.reduce((a, r) => a + Number(r.duree_min), 0);
+
+  const summaryBits = [];
+  if (s.duration_s) summaryBits.push(mmss(s.duration_s));
+  if (s.hr_avg) summaryBits.push('FC moy ' + s.hr_avg);
+  if (tonnage) summaryBits.push(Math.round(tonnage).toLocaleString('fr-FR') + ' kg');
+  if (cardioMin) summaryBits.push(Math.round(cardioMin) + ' min cardio');
+  if (ownWods.length) summaryBits.push(ownWods.length + ' format' + (ownWods.length > 1 ? 's' : ''));
+
+  let body = '';
+  if (s.hr_avg != null || s.hr_peak != null || s.rmssd != null) {
+    body += '<h5>Fréquence cardiaque</h5>' +
+      '<div class="repline"><span>FC moyenne / pic / min</span><b>' +
+      (s.hr_avg ?? '—') + ' / ' + (s.hr_peak ?? '—') + ' / ' + (s.hr_min ?? '—') + ' bpm</b></div>' +
+      (s.rmssd != null ? '<div class="repline"><span>VFC (RMSSD)</span><b>' + s.rmssd + ' ms</b></div>' : '');
+  }
+  if (ownSets.length) {
+    body += '<h5>Renforcement musculaire</h5>' + ownSets.map(r =>
+      '<div class="repline"><span>' + escapeHtml(r.exercice) + '</span><b>' + r.kg + ' kg × ' + r.reps +
+      (r.series > 1 ? ' × ' + r.series : '') + ' — 1RM ' + r.e1rm + ' kg</b></div>'
+    ).join('') + '<div class="repline"><span>Tonnage total</span><b>' + Math.round(tonnage).toLocaleString('fr-FR') + ' kg</b></div>';
+  }
+  if (ownCardio.length) {
+    body += '<h5>Cardio</h5>' + ownCardio.map(c =>
+      '<div class="repline"><span>' + escapeHtml(c.type) + '</span><b>' + c.duree_min + ' min' +
+      (c.distance_km != null ? ' · ' + c.distance_km + ' km (' + paceText(c.duree_min, c.distance_km) + ')' : '') +
+      (c.fc_moy != null ? ' · FC ' + c.fc_moy : '') + (c.calories != null ? ' · ' + c.calories + ' kcal' : '') + '</b></div>'
+    ).join('');
+  }
+  if (ownWods.length) {
+    body += '<h5>Conditionnement</h5>' + ownWods.map(w =>
+      '<div class="repline"><span><span class="typebadge">' + WOD_LABELS[w.type] + '</span>' + wodMovesText(w) +
+      '</span><b>' + wodResultText(w) + '</b></div>'
+    ).join('');
+  }
+  if (!body) body = '<p class="muted">Aucun détail enregistré pour cette séance.</p>';
+
+  return '<details class="sessionReport"><summary><span>' + frDateTime(s.started_at) + '</span>' +
+    '<span class="muted" style="text-align:right">' + (summaryBits.join(' · ') || 'Aucune donnée') + '</span></summary>' +
+    '<div class="reportbody">' + body + '</div></details>';
+}
+
 async function loadHistory() {
   const el = $('#histSessions'); el.innerHTML = '<p class="muted">Chargement…</p>';
-  const elWod = $('#histWod'); elWod.innerHTML = '<p class="muted">Chargement…</p>';
-  const elCardio = $('#histCardio'); elCardio.innerHTML = '<p class="muted">Chargement…</p>';
   const [sRes, tRes, wRes, cRes] = await Promise.all([
-    sb.from('coaching_sessions').select('*').eq('client_id', currentClient.id).order('started_at', { ascending: false }).limit(40),
-    sb.from('strength_sets').select('*').eq('client_id', currentClient.id).order('recorded_at', { ascending: false }).limit(400),
-    sb.from('wod_entries').select('*').eq('client_id', currentClient.id).order('recorded_at', { ascending: false }).limit(100),
-    sb.from('cardio_entries').select('*').eq('client_id', currentClient.id).order('recorded_at', { ascending: false }).limit(200),
+    sb.from('coaching_sessions').select('*').eq('client_id', currentClient.id).order('started_at', { ascending: false }).limit(60),
+    sb.from('strength_sets').select('*').eq('client_id', currentClient.id).order('recorded_at', { ascending: true }).limit(1000),
+    sb.from('wod_entries').select('*').eq('client_id', currentClient.id).order('recorded_at', { ascending: true }).limit(300),
+    sb.from('cardio_entries').select('*').eq('client_id', currentClient.id).order('recorded_at', { ascending: true }).limit(500),
   ]);
   const sessions = sRes.data || [], sets = tRes.data || [], wods = wRes.data || [], cardios = cRes.data || [];
-  if (!sessions.length) { el.innerHTML = '<p class="muted">Aucune séance enregistrée pour l’instant.</p>'; }
-  else {
-    el.innerHTML = sessions.map(s => {
-      const own = sets.filter(r => r.session_id === s.id);
-      const tonnage = own.reduce((a, r) => a + Number(r.tonnage), 0);
-      const exos = own.map(r => escapeHtml(r.exercice) + ' ' + r.kg + '×' + r.reps + (r.series > 1 ? '×' + r.series : '') + ' (1RM ' + r.e1rm + ' kg)').join(' · ');
-      return '<div class="item"><span>' + frDateTime(s.started_at) +
-        (s.duration_s ? ' · ' + mmss(s.duration_s) : '') +
-        (s.hr_avg ? ' · FC moy <b>' + s.hr_avg + '</b> pic <b>' + s.hr_peak + '</b>' : '') +
-        (own.length ? '<br><span class="muted" style="font-size:.82rem">' + exos + '</span>' : '') +
-        '</span><span class="muted" style="text-align:right;white-space:nowrap">' +
-        (tonnage ? Math.round(tonnage).toLocaleString('fr-FR') + ' kg' : '—') + '</span></div>';
-    }).join('');
-  }
-  if (!wods.length) { elWod.innerHTML = '<p class="muted">Aucun format enregistré pour l’instant.</p>'; }
-  else {
-    elWod.innerHTML = wods.map(w =>
-      '<div class="item"><span>' + frDateTime(w.recorded_at) + ' · <span class="typebadge">' + WOD_LABELS[w.type] + '</span>' +
-      wodMovesText(w) + (w.cap_minutes ? '<br><span class="muted" style="font-size:.82rem">Cap ' + w.cap_minutes + ' min</span>' : '') +
-      '</span><span class="muted" style="text-align:right;white-space:nowrap">' + wodResultText(w) + '</span></div>'
-    ).join('');
-  }
-  if (!cardios.length) { elCardio.innerHTML = '<p class="muted">Aucun cardio enregistré pour l’instant.</p>'; }
-  else {
-    elCardio.innerHTML = cardios.map(c =>
-      '<div class="item"><span>' + frDateTime(c.recorded_at) + ' · ' + escapeHtml(c.type) + ' — ' + c.duree_min + ' min' +
-      (c.distance_km != null ? ' · ' + c.distance_km + ' km (' + paceText(c.duree_min, c.distance_km) + ')' : '') +
-      '</span><span class="muted" style="text-align:right;white-space:nowrap">' +
-      (c.fc_moy != null ? 'FC moy ' + c.fc_moy : '') + (c.calories != null ? (c.fc_moy != null ? ' · ' : '') + c.calories + ' kcal' : '') +
-      '</span></div>'
-    ).join('');
-  }
+  if (!sessions.length) { el.innerHTML = '<p class="muted">Aucune séance enregistrée pour l’instant.</p>'; return; }
+  el.innerHTML = sessions.map(s => sessionReportHTML(
+    s,
+    sets.filter(r => r.session_id === s.id),
+    cardios.filter(r => r.session_id === s.id),
+    wods.filter(r => r.session_id === s.id)
+  )).join('');
 }
 
 /* =====================================================================
