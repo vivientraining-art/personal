@@ -70,10 +70,23 @@
   }
   .formrow{display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end}
   .field{
+    position:relative;
     display:flex;flex-direction:column;gap:.3rem;
     font-size:.72rem;color:var(--muted);font-weight:700;
     text-transform:uppercase;letter-spacing:.06em;
   }
+  .aclist{
+    position:absolute;top:100%;left:0;right:0;z-index:20;background:#fff;border:1px solid var(--line);
+    border-radius:var(--r-sm);margin-top:.25rem;max-height:230px;overflow-y:auto;box-shadow:var(--sh-2);
+    display:none;
+  }
+  .aclist.on{display:block}
+  .aclist button{
+    display:block;width:100%;text-align:left;background:#fff;border:none;border-radius:0;
+    padding:.6rem .75rem;font-size:.88rem;font-weight:400;text-transform:none;letter-spacing:normal;
+    color:var(--ink);min-height:0;
+  }
+  .aclist button.hl,.aclist button:hover{background:var(--sand)}
   input,select,textarea{
     font:inherit;color:var(--ink);background:#fff;border:1px solid var(--line);
     border-radius:var(--r-sm);padding:.55rem .65rem;min-height:44px;min-width:120px;
@@ -331,7 +344,7 @@
           <h3>Renforcement musculaire</h3>
           <div class="formrow">
             <div class="field">Exercice
-              <input type="text" id="sExo" list="exoList" placeholder="Squat, développé couché…"></div>
+              <input type="text" id="sExo" placeholder="Squat, développé couché…" autocomplete="off"></div>
             <div class="field">Charge (kg)
               <input type="number" id="sKg" min="0.5" max="500" step="0.5" inputmode="decimal"></div>
             <div class="field">Répétitions
@@ -340,11 +353,6 @@
               <input type="number" id="sSeries" min="1" max="20" step="1" value="1" inputmode="numeric"></div>
             <button class="btn-soft" id="sAdd" disabled>Ajouter</button>
           </div>
-          <datalist id="exoList">
-            <option>Squat</option><option>Développé couché</option><option>Soulevé de terre</option>
-            <option>Tirage horizontal</option><option>Développé militaire</option><option>Fentes</option>
-            <option>Rowing</option><option>Traction</option>
-          </datalist>
           <p class="note" style="margin-top:.5rem">Tonnage = charge × répétitions × séries. 1RM estimée par la
             formule d'Epley : charge × (1 + reps/30). Nécessite une séance démarrée.</p>
           <table class="settbl" id="setTable" hidden>
@@ -361,7 +369,7 @@
           <h3>Cardio</h3>
           <div class="formrow">
             <div class="field">Type
-              <input type="text" id="crType" list="cardioList" placeholder="Course à pied, vélo…"></div>
+              <input type="text" id="crType" placeholder="Course à pied, vélo…" autocomplete="off"></div>
             <div class="field">Durée (min)
               <input type="number" id="crDuree" min="1" max="600" step="1" inputmode="numeric"></div>
             <div class="field">Distance (km)
@@ -372,11 +380,6 @@
               <input type="number" id="crCal" min="0" max="3000" step="1" inputmode="numeric"></div>
             <button class="btn-soft" id="crAdd" disabled>Ajouter</button>
           </div>
-          <datalist id="cardioList">
-            <option>Course à pied</option><option>Vélo</option><option>Rameur</option>
-            <option>Elliptique</option><option>Marche</option><option>Corde à sauter</option>
-            <option>Tapis de course</option><option>Vélo elliptique</option>
-          </datalist>
           <p class="note" style="margin-top:.5rem">Distance, FC moyenne et calories sont optionnelles.
             Nécessite une séance démarrée.</p>
           <table class="settbl" id="crTable" hidden>
@@ -399,23 +402,11 @@
           </div>
           <div class="formrow" style="margin-top:.85rem">
             <div class="field">Exercice
-              <input type="text" id="wExo" list="wodExoList" placeholder="Burpees, wall balls…"></div>
+              <input type="text" id="wExo" placeholder="Burpees, wall balls…" autocomplete="off"></div>
             <div class="field">Répétitions
               <input type="number" id="wReps" min="1" max="500" step="1" inputmode="numeric"></div>
             <button class="btn-soft" id="wMoveAdd">Ajouter au format</button>
           </div>
-          <datalist id="wodExoList">
-            <option>Burpees</option><option>Wall Balls</option><option>Jumping Jacks</option>
-            <option>Thrusters</option><option>Skatings</option><option>Crosskicks</option>
-            <option>Corde à sauter</option><option>Squat Jumps</option><option>Superman</option>
-            <option>Climbers</option><option>Sit-ups</option><option>Roll-ins</option>
-            <option>Abdos étoiles</option><option>Toe Touch</option><option>Tuck Jump</option>
-            <option>Box Jump</option><option>Air Squat</option><option>Pompes</option>
-            <option>Montées de genoux</option><option>Talons-fesses</option><option>Gainage</option>
-            <option>Russian Twist</option><option>Double Unders</option><option>Kettlebell Swings</option>
-            <option>Bear Crawl</option><option>Step-ups</option><option>Fentes sautées</option>
-            <option>Dips</option><option>V-ups</option>
-          </datalist>
           <div class="chiplist" id="wMoves" hidden></div>
           <p class="note" style="margin-top:.7rem">Compose le format avec un ou plusieurs mouvements (ex. 10 burpees +
             15 wall balls), puis renseigne le résultat obtenu ci-dessous. Nécessite une séance démarrée.</p>
@@ -676,6 +667,46 @@ $('#clientList').addEventListener('click', (e) => {
 
 function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* =====================================================================
+   Suggestions de saisie « maison » — remplace <datalist>, peu fiable
+   sur Safari (iOS/iPadOS n'affiche pas les suggestions natives).
+   ===================================================================== */
+function attachSuggest(input, options) {
+  const wrap = input.closest('.field');
+  const box = document.createElement('div');
+  box.className = 'aclist';
+  wrap.appendChild(box);
+  let items = [];
+  let hl = -1;
+
+  function render() {
+    const q = input.value.trim().toLowerCase();
+    items = (q ? options.filter(o => o.toLowerCase().includes(q)) : options).slice(0, 8);
+    hl = -1;
+    box.innerHTML = items.map((o, i) => '<button type="button" data-i="' + i + '">' + escapeHtml(o) + '</button>').join('');
+    box.classList.toggle('on', items.length > 0);
+  }
+  function close() { box.classList.remove('on'); box.innerHTML = ''; }
+  function highlight() { $$('button', box).forEach((b, i) => b.classList.toggle('hl', i === hl)); }
+
+  input.addEventListener('focus', render);
+  input.addEventListener('input', render);
+  input.addEventListener('keydown', (e) => {
+    if (!box.classList.contains('on') || !items.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); hl = Math.min(hl + 1, items.length - 1); highlight(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); hl = Math.max(hl - 1, 0); highlight(); }
+    else if (e.key === 'Enter' && hl >= 0) { e.preventDefault(); input.value = items[hl]; close(); }
+    else if (e.key === 'Escape') { close(); }
+  });
+  box.addEventListener('mousedown', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    e.preventDefault();
+    input.value = items[Number(b.dataset.i)];
+    close();
+  });
+  input.addEventListener('blur', () => setTimeout(close, 150));
 }
 
 $('#cAdd').addEventListener('click', async () => {
@@ -1335,6 +1366,15 @@ async function loadCharts() {
 
   el.innerHTML = html || '<p class="muted">Aucune donnée pour l’instant.</p>';
 }
+
+attachSuggest($('#sExo'), ['Squat', 'Développé couché', 'Soulevé de terre', 'Tirage horizontal', 'Développé militaire', 'Fentes', 'Rowing', 'Traction']);
+attachSuggest($('#crType'), ['Course à pied', 'Vélo', 'Rameur', 'Elliptique', 'Marche', 'Corde à sauter', 'Tapis de course', 'Vélo elliptique']);
+attachSuggest($('#wExo'), [
+  'Burpees', 'Wall Balls', 'Jumping Jacks', 'Thrusters', 'Skatings', 'Crosskicks', 'Corde à sauter',
+  'Squat Jumps', 'Superman', 'Climbers', 'Sit-ups', 'Roll-ins', 'Abdos étoiles', 'Toe Touch', 'Tuck Jump',
+  'Box Jump', 'Air Squat', 'Pompes', 'Montées de genoux', 'Talons-fesses', 'Gainage', 'Russian Twist',
+  'Double Unders', 'Kettlebell Swings', 'Bear Crawl', 'Step-ups', 'Fentes sautées', 'Dips', 'V-ups',
+]);
 
 /* =====================================================================
    Démarrage
