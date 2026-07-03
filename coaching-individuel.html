@@ -184,6 +184,8 @@
   .chip button{background:none;border:none;color:var(--muted);min-height:0;padding:.1rem .3rem;font-size:.9rem;border-radius:50%;cursor:pointer}
   .chip button:hover{color:var(--z5)}
   .typebadge{display:inline-block;background:var(--sand);color:var(--ink);border-radius:6px;padding:.1rem .5rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-right:.4rem}
+  .exolink{background:none;border:none;padding:0;margin:0;min-height:0;font:inherit;color:var(--pine);font-weight:700;cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}
+  .exolink:hover{color:var(--terra)}
   details.sessionReport{border-top:1px solid var(--line);padding:.65rem 0}
   details.sessionReport:first-of-type{border-top:none}
   details.sessionReport summary{
@@ -1072,7 +1074,8 @@ function renderSeanceEntries() {
   if (!seanceEntries.length) { $('#setTable').hidden = true; $('#tonRow').hidden = true; return; }
   $('#setTable').hidden = false; $('#tonRow').hidden = false;
   $('#setTbody').innerHTML = seanceEntries.map(r =>
-    '<tr data-id="' + r.id + '"><td>' + escapeHtml(r.exercice) + '</td><td>' + r.kg + ' kg</td><td>' + r.reps +
+    '<tr data-id="' + r.id + '"><td><button type="button" class="exolink" data-exo="' + escapeHtml(r.exercice) +
+    '">' + escapeHtml(r.exercice) + '</button></td><td>' + r.kg + ' kg</td><td>' + r.reps +
     '</td><td>' + r.series + '</td><td>' + r.tonnage + ' kg</td><td>' + r.e1rm + ' kg</td>' +
     '<td>' + (r.repos_s != null ? mmss(r.repos_s) : '—') + '</td>' +
     '<td><button class="btn-soft btn-sm" data-del="' + r.id + '">✕</button></td></tr>'
@@ -1082,6 +1085,8 @@ function renderSeanceEntries() {
 }
 
 $('#setTbody').addEventListener('click', async (e) => {
+  const exo = e.target.closest('button[data-exo]');
+  if (exo) { $('#sExo').value = exo.dataset.exo; $('#sKg').focus(); return; }
   const b = e.target.closest('button[data-del]'); if (!b) return;
   const id = Number(b.dataset.del);
   const { error } = await sb.from('strength_sets').delete().eq('id', id);
