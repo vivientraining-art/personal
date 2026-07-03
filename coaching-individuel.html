@@ -347,6 +347,11 @@
 
         <div class="panel">
           <h3>Renforcement musculaire</h3>
+          <div class="livebox" style="margin-bottom:1rem">
+            <span class="muted" style="font-size:.85rem">Repos depuis la dernière série</span>
+            <div class="spacer"></div>
+            <span class="chrono" id="restChrono">00:00</span>
+          </div>
           <div class="formrow">
             <div class="field">Exercice
               <input type="text" id="sExo" placeholder="Squat, développé couché…" autocomplete="off"></div>
@@ -357,11 +362,13 @@
             <div class="field">Séries
               <input type="number" id="sSeries" min="1" max="20" step="1" value="1" inputmode="numeric"></div>
             <button class="btn-soft" id="sAdd" disabled>Ajouter</button>
+            <button class="btn-soft" id="sReset" title="Réinitialiser les champs">✕</button>
           </div>
           <p class="note" style="margin-top:.5rem">Tonnage = charge × répétitions × séries. 1RM estimée par la
-            formule d'Epley : charge × (1 + reps/30). Nécessite une séance démarrée.</p>
+            formule d'Epley : charge × (1 + reps/30). Le repos est chronométré automatiquement entre deux séries.
+            Nécessite une séance démarrée.</p>
           <table class="settbl" id="setTable" hidden>
-            <thead><tr><th>Exercice</th><th>Charge</th><th>Reps</th><th>Séries</th><th>Tonnage</th><th>1RM</th><th></th></tr></thead>
+            <thead><tr><th>Exercice</th><th>Charge</th><th>Reps</th><th>Séries</th><th>Tonnage</th><th>1RM</th><th>Repos</th><th></th></tr></thead>
             <tbody id="setTbody"></tbody>
           </table>
           <div class="tonrow" id="tonRow" hidden>
@@ -930,6 +937,33 @@ function renderLiveHr() {
   $('#hrRmssd').textContent = live.rmssd === null ? '—' : Math.round(live.rmssd);
 }
 
+/* =====================================================================
+   Chrono de repos — temps écoulé depuis la dernière série
+   ===================================================================== */
+let lastSetAt = null;
+let restTick = null;
+
+function renderRestChrono() {
+  $('#restChrono').textContent = lastSetAt === null ? '00:00' : mmss(Math.floor((Date.now() - lastSetAt) / 1000));
+}
+function startRestTimer() {
+  lastSetAt = Date.now();
+  renderRestChrono();
+  clearInterval(restTick);
+  restTick = setInterval(renderRestChrono, 1000);
+}
+function stopRestTimer() {
+  clearInterval(restTick);
+  restTick = null;
+  lastSetAt = null;
+  renderRestChrono();
+}
+
+$('#sReset').addEventListener('click', () => {
+  $('#sExo').value = ''; $('#sKg').value = ''; $('#sReps').value = ''; $('#sSeries').value = '1';
+  $('#sExo').focus();
+});
+
 function resetSeanceUI() {
   live.hr = null; live.rrRecent = []; live.rmssd = null;
   renderLiveHr();
@@ -942,6 +976,7 @@ function resetSeanceUI() {
   $('#sAdd').disabled = true;
   currentSessionId = null;
   seanceEntries = [];
+  stopRestTimer();
   wodMoves = [];
   sessionWods = [];
   $('#wMoves').innerHTML = ''; $('#wMoves').hidden = true;
@@ -975,6 +1010,7 @@ $('#btnStart').addEventListener('click', async () => {
   live.tick = setInterval(() => {
     $('#hrChrono').textContent = mmss(Math.floor((Date.now() - live.session.startedAt) / 1000));
   }, 1000);
+  startRestTimer();
   toast('Séance démarrée — chrono lancé');
 });
 
@@ -984,6 +1020,7 @@ $('#btnStop').addEventListener('click', async () => {
   live.session = null;
   $('#sessionBadge').classList.remove('on');
   releaseWakeLock();
+  stopRestTimer();
   $('#btnStop').hidden = true;
   $('#btnStart').hidden = false;
   const durationS = Math.round((Date.now() - s.startedAt) / 1000);
@@ -1017,14 +1054,16 @@ $('#sAdd').addEventListener('click', async () => {
   if (!(kg > 0) || !(reps > 0)) { toast('Renseigne charge et répétitions.'); return; }
   const tonnage = Math.round(kg * reps * series * 10) / 10;
   const e1rm = e1rmEpley(kg, reps);
+  const repos_s = lastSetAt !== null ? Math.round((Date.now() - lastSetAt) / 1000) : null;
   $('#sAdd').disabled = true;
   const { data, error } = await sb.from('strength_sets')
-    .insert({ client_id: currentClient.id, session_id: currentSessionId, coach_id: me.id, exercice, kg, reps, series, tonnage, e1rm })
+    .insert({ client_id: currentClient.id, session_id: currentSessionId, coach_id: me.id, exercice, kg, reps, series, tonnage, e1rm, repos_s })
     .select().single();
   $('#sAdd').disabled = false;
   if (error) { toast('Erreur : ' + error.message); return; }
   seanceEntries.push(data);
   renderSeanceEntries();
+  startRestTimer();
   $('#sKg').value = ''; $('#sReps').value = '';
   toast('Série ajoutée ✔');
 });
@@ -1035,6 +1074,7 @@ function renderSeanceEntries() {
   $('#setTbody').innerHTML = seanceEntries.map(r =>
     '<tr data-id="' + r.id + '"><td>' + escapeHtml(r.exercice) + '</td><td>' + r.kg + ' kg</td><td>' + r.reps +
     '</td><td>' + r.series + '</td><td>' + r.tonnage + ' kg</td><td>' + r.e1rm + ' kg</td>' +
+    '<td>' + (r.repos_s != null ? mmss(r.repos_s) : '—') + '</td>' +
     '<td><button class="btn-soft btn-sm" data-del="' + r.id + '">✕</button></td></tr>'
   ).join('');
   const total = seanceEntries.reduce((a, r) => a + Number(r.tonnage), 0);
@@ -1228,7 +1268,8 @@ function sessionReportHTML(s, ownSets, ownCardio, ownWods) {
   if (ownSets.length) {
     body += '<h5>Renforcement musculaire</h5>' + ownSets.map(r =>
       '<div class="repline"><span>' + escapeHtml(r.exercice) + '</span><b>' + r.kg + ' kg × ' + r.reps +
-      (r.series > 1 ? ' × ' + r.series : '') + ' — 1RM ' + r.e1rm + ' kg</b></div>'
+      (r.series > 1 ? ' × ' + r.series : '') + ' — 1RM ' + r.e1rm + ' kg' +
+      (r.repos_s != null ? ' · repos ' + mmss(r.repos_s) : '') + '</b></div>'
     ).join('') + '<div class="repline"><span>Tonnage total</span><b>' + Math.round(tonnage).toLocaleString('fr-FR') + ' kg</b></div>';
   }
   if (ownCardio.length) {
