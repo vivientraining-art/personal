@@ -158,6 +158,14 @@
   table.settbl td{padding:.5rem .4rem;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
   table.settbl tr:last-child td{border-bottom:none}
   .tonrow{display:flex;justify-content:space-between;align-items:center;margin-top:.8rem;padding-top:.8rem;border-top:1px dashed var(--line);font-weight:700}
+  .chiplist{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.7rem}
+  .chip{
+    display:inline-flex;align-items:center;gap:.4rem;background:#fff;border:1px solid var(--line);
+    border-radius:999px;padding:.3rem .5rem .3rem .75rem;font-size:.82rem;font-variant-numeric:tabular-nums;
+  }
+  .chip button{background:none;border:none;color:var(--muted);min-height:0;padding:.1rem .3rem;font-size:.9rem;border-radius:50%;cursor:pointer}
+  .chip button:hover{color:var(--z5)}
+  .typebadge{display:inline-block;background:var(--sand);color:var(--ink);border-radius:6px;padding:.1rem .5rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-right:.4rem}
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -254,6 +262,10 @@
             <input type="text" id="ecNom" maxlength="60"></div>
           <div class="field">FC max (bpm)
             <input type="number" id="ecFcMax" min="120" max="230" step="1"></div>
+          <div class="field">Âge
+            <input type="number" id="ecAge" min="5" max="110" step="1"></div>
+          <div class="field">Taille (cm)
+            <input type="number" id="ecTaille" min="50" max="250" step="1"></div>
           <div class="field">Statut
             <div class="seg" id="ecActif">
               <button type="button" data-a="1">Actif</button>
@@ -270,6 +282,7 @@
 
       <div class="tabs" id="cvTabs">
         <button class="tab on" data-tab="seance">Séance</button>
+        <button class="tab" data-tab="corps">Mensurations</button>
         <button class="tab" data-tab="histo">Historique</button>
         <button class="tab" data-tab="progression">Progression</button>
       </div>
@@ -330,6 +343,59 @@
             <span id="tonTotal">0 kg</span>
           </div>
         </div>
+
+        <div class="panel">
+          <h3>Conditionnement — AMRAP / EMOM / FOR TIME</h3>
+          <div class="formrow">
+            <div class="field">Format
+              <div class="seg" id="wType">
+                <button type="button" data-w="amrap" class="sel">AMRAP</button>
+                <button type="button" data-w="emom">EMOM</button>
+                <button type="button" data-w="for_time">FOR TIME</button>
+              </div></div>
+            <div class="field" id="wCapField"><span id="wCapLabel">Cap (min)</span>
+              <input type="number" id="wCap" min="1" max="120" step="1"></div>
+          </div>
+          <div class="formrow" style="margin-top:.85rem">
+            <div class="field">Exercice
+              <input type="text" id="wExo" list="exoList" placeholder="Burpees, wall balls…"></div>
+            <div class="field">Répétitions
+              <input type="number" id="wReps" min="1" max="500" step="1" inputmode="numeric"></div>
+            <button class="btn-soft" id="wMoveAdd">Ajouter au format</button>
+          </div>
+          <div class="chiplist" id="wMoves" hidden></div>
+          <p class="note" style="margin-top:.7rem">Compose le format avec un ou plusieurs mouvements (ex. 10 burpees +
+            15 wall balls), puis renseigne le résultat obtenu ci-dessous. Nécessite une séance démarrée.</p>
+          <div class="formrow" style="margin-top:.6rem">
+            <div class="field" id="wRoundsField">Tours complets
+              <input type="number" id="wRounds" min="0" max="200" step="1"></div>
+            <div class="field" id="wExtraField">Reps suppl.
+              <input type="number" id="wExtraReps" min="0" max="500" step="1"></div>
+            <div class="field" id="wTimeField">Temps réalisé (mm:ss)
+              <input type="text" id="wTime" placeholder="12:34" maxlength="5"></div>
+            <button class="btn-soft" id="wSave" disabled>Enregistrer le WOD</button>
+          </div>
+          <div id="wodList" style="margin-top:.6rem"></div>
+        </div>
+      </section>
+
+      <!-- Mensurations -->
+      <section data-cvpanel="corps" hidden>
+        <div class="panel">
+          <h3>Poids &amp; composition corporelle</h3>
+          <div class="formrow">
+            <div class="field">Poids (kg)
+              <input type="number" id="bPoids" min="20" max="300" step="0.1" inputmode="decimal"></div>
+            <div class="field">Masse grasse (%)
+              <input type="number" id="bGraisse" min="1" max="70" step="0.1" inputmode="decimal"></div>
+            <div class="field">Masse musculaire (kg)
+              <input type="number" id="bMuscle" min="10" max="150" step="0.1" inputmode="decimal"></div>
+            <button class="btn-soft" id="bAdd">Ajouter</button>
+          </div>
+          <p class="note" id="bImcNote" style="margin-top:.5rem">Renseigne l'âge et la taille dans « Modifier la fiche »
+            pour voir l'IMC calculé automatiquement à chaque pesée.</p>
+          <div class="hist" id="histBody"><p class="muted">Chargement…</p></div>
+        </div>
       </section>
 
       <!-- Historique -->
@@ -338,14 +404,18 @@
           <h3>Séances passées</h3>
           <div class="hist" id="histSessions"><p class="muted">Chargement…</p></div>
         </div>
+        <div class="panel">
+          <h3>Formats — AMRAP / EMOM / FOR TIME</h3>
+          <div class="hist" id="histWod"><p class="muted">Chargement…</p></div>
+        </div>
       </section>
 
       <!-- Progression -->
       <section data-cvpanel="progression" hidden>
         <div class="panel">
           <h3>Progression</h3>
-          <p class="note" style="margin-top:0">Évolution du tonnage et de la 1RM estimée par exercice. Les courbes
-            apparaissent dès deux points de données.</p>
+          <p class="note" style="margin-top:0">Évolution du tonnage, de la 1RM estimée par exercice, du poids et de la
+            composition corporelle. Les courbes apparaissent dès deux points de données.</p>
           <div id="cvCharts"><p class="muted">Chargement…</p></div>
         </div>
       </section>
@@ -365,9 +435,11 @@
    ⚙️  CONFIGURATION
    Ce fichier utilise le MÊME projet Supabase que l'espace adhérent
    (mêmes clés publiques, Dashboard → Project Settings → API).
-   Les nouvelles tables (coaching_clients, coaching_sessions,
-   strength_sets) sont installées par supabase-migration-3-coaching-individuel.sql
-   et protégées par des règles RLS séparées, réservées à ton compte coach.
+   Les tables (coaching_clients, coaching_sessions, strength_sets,
+   body_metrics, wod_entries) sont installées par
+   supabase-migration-3-coaching-individuel.sql et
+   supabase-migration-4-corps-wod.sql, protégées par des règles RLS
+   réservées à ton compte coach.
    ===================================================================== */
 const SUPABASE_URL      = 'https://mxdsvbrxeospfohgvzbz.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_MIO9ShdnMK1-mQm0T1J5YA_UPkAJ80_';
@@ -579,6 +651,14 @@ function showClients() {
 }
 $('#backBtn').addEventListener('click', () => { showClients(); loadClients(); });
 
+function clientMetaText(c) {
+  const parts = ['FC max ' + c.fc_max + ' bpm'];
+  if (c.age) parts.push(c.age + ' ans');
+  if (c.taille_cm) parts.push(c.taille_cm + ' cm');
+  if (!c.actif) parts.push('inactif');
+  return parts.join(' · ');
+}
+
 async function openClient(id) {
   const { data, error } = await sb.from('coaching_clients').select('*').eq('id', id).single();
   if (error || !data) { toast('Client introuvable.'); return; }
@@ -587,7 +667,7 @@ async function openClient(id) {
   $('#clientView').hidden = false;
   $('#cvEditPanel').hidden = true;
   $('#cvNom').textContent = currentClient.nom;
-  $('#cvMeta').textContent = 'FC max ' + currentClient.fc_max + ' bpm' + (currentClient.actif ? '' : ' · inactif');
+  $('#cvMeta').textContent = clientMetaText(currentClient);
   resetSeanceUI();
   $$('.tab', $('#cvTabs')).forEach(t => t.classList.toggle('on', t.dataset.tab === 'seance'));
   $$('section[data-cvpanel]').forEach(s => s.hidden = s.dataset.cvpanel !== 'seance');
@@ -598,6 +678,7 @@ $('#cvTabs').addEventListener('click', (e) => {
   $$('.tab', $('#cvTabs')).forEach(t => t.classList.toggle('on', t === b));
   const tab = b.dataset.tab;
   $$('section[data-cvpanel]').forEach(s => s.hidden = s.dataset.cvpanel !== tab);
+  if (tab === 'corps') loadBodyMetrics();
   if (tab === 'histo') loadHistory();
   if (tab === 'progression') loadCharts();
 });
@@ -608,6 +689,8 @@ $('#cvEditBtn').addEventListener('click', () => {
   if (!p.hidden) {
     $('#ecNom').value = currentClient.nom;
     $('#ecFcMax').value = currentClient.fc_max;
+    $('#ecAge').value = currentClient.age || '';
+    $('#ecTaille').value = currentClient.taille_cm || '';
     $('#ecNotes').value = currentClient.notes || '';
     $$('#ecActif button').forEach(b => b.classList.toggle('sel', b.dataset.a === (currentClient.actif ? '1' : '0')));
   }
@@ -619,15 +702,17 @@ $$('#ecActif button').forEach(b => b.addEventListener('click', () => {
 $('#ecSave').addEventListener('click', async () => {
   const nom = $('#ecNom').value.trim();
   const fc_max = parseInt($('#ecFcMax').value, 10) || 190;
+  const age = $('#ecAge').value === '' ? null : parseInt($('#ecAge').value, 10);
+  const taille_cm = $('#ecTaille').value === '' ? null : parseFloat($('#ecTaille').value);
   const actifBtn = $('#ecActif button.sel');
   const actif = actifBtn ? actifBtn.dataset.a === '1' : true;
   const notes = $('#ecNotes').value.trim();
   if (!nom) { toast('Le nom est obligatoire.'); return; }
-  const { error } = await sb.from('coaching_clients').update({ nom, fc_max, actif, notes }).eq('id', currentClient.id);
+  const { error } = await sb.from('coaching_clients').update({ nom, fc_max, age, taille_cm, actif, notes }).eq('id', currentClient.id);
   if (error) { toast('Erreur : ' + error.message); return; }
-  currentClient = { ...currentClient, nom, fc_max, actif, notes };
+  currentClient = { ...currentClient, nom, fc_max, age, taille_cm, actif, notes };
   $('#cvNom').textContent = nom;
-  $('#cvMeta').textContent = 'FC max ' + fc_max + ' bpm' + (actif ? '' : ' · inactif');
+  $('#cvMeta').textContent = clientMetaText(currentClient);
   $('#cvEditPanel').hidden = true;
   toast('Fiche mise à jour ✔');
 });
@@ -755,6 +840,12 @@ function resetSeanceUI() {
   $('#sAdd').disabled = true;
   currentSessionId = null;
   seanceEntries = [];
+  wodMoves = [];
+  sessionWods = [];
+  $('#wMoves').innerHTML = ''; $('#wMoves').hidden = true;
+  $('#wodList').innerHTML = '';
+  $('#wSave').disabled = true;
+  $('#wRounds').value = ''; $('#wExtraReps').value = ''; $('#wTime').value = ''; $('#wCap').value = '';
 }
 
 $('#btnStart').addEventListener('click', async () => {
@@ -852,6 +943,97 @@ $('#setTbody').addEventListener('click', async (e) => {
   renderSeanceEntries();
 });
 
+/* =====================================================================
+   Conditionnement — AMRAP / EMOM / FOR TIME
+   ===================================================================== */
+let wodType = 'amrap';
+let wodMoves = [];
+let sessionWods = [];
+
+const WOD_LABELS = { amrap: 'AMRAP', emom: 'EMOM', for_time: 'FOR TIME' };
+const WOD_CAP_LABEL = { amrap: 'Cap (min)', emom: 'Durée totale (min)', for_time: 'Cap (min, optionnel)' };
+
+$('#wType').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  $$('#wType button').forEach(x => x.classList.toggle('sel', x === b));
+  wodType = b.dataset.w;
+  $('#wCapLabel').textContent = WOD_CAP_LABEL[wodType];
+});
+
+function parseMmSs(str) {
+  const m = String(str || '').trim().match(/^(\d{1,3}):([0-5]?\d)$/);
+  return m ? (parseInt(m[1], 10) * 60 + parseInt(m[2], 10)) : null;
+}
+
+$('#wMoveAdd').addEventListener('click', () => {
+  const exercice = $('#wExo').value.trim();
+  const reps = parseInt($('#wReps').value, 10);
+  if (!exercice) { toast('Indique l’exercice.'); return; }
+  if (!(reps > 0)) { toast('Renseigne le nombre de répétitions.'); return; }
+  wodMoves.push({ exercice, reps });
+  renderWodMoves();
+  $('#wExo').value = ''; $('#wReps').value = '';
+});
+
+function renderWodMoves() {
+  const el = $('#wMoves');
+  if (!wodMoves.length) { el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  el.innerHTML = wodMoves.map((m, i) =>
+    '<span class="chip">' + escapeHtml(m.exercice) + ' × ' + m.reps + '<button type="button" data-rm="' + i + '">✕</button></span>'
+  ).join('');
+}
+$('#wMoves').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-rm]'); if (!b) return;
+  wodMoves.splice(Number(b.dataset.rm), 1);
+  renderWodMoves();
+});
+
+$('#wSave').addEventListener('click', async () => {
+  if (!currentSessionId) { toast('Démarre d’abord la séance.'); return; }
+  if (!wodMoves.length) { toast('Ajoute au moins un exercice au format.'); return; }
+  const cap_minutes = parseInt($('#wCap').value, 10) || null;
+  const result_rounds = $('#wRounds').value === '' ? null : parseInt($('#wRounds').value, 10);
+  const result_reps = $('#wExtraReps').value === '' ? null : parseInt($('#wExtraReps').value, 10);
+  const result_time_s = $('#wTime').value.trim() ? parseMmSs($('#wTime').value) : null;
+  if ($('#wTime').value.trim() && result_time_s === null) { toast('Format du temps invalide — utilise mm:ss (ex. 12:34).'); return; }
+  $('#wSave').disabled = true;
+  const { data, error } = await sb.from('wod_entries')
+    .insert({
+      client_id: currentClient.id, session_id: currentSessionId, coach_id: me.id,
+      type: wodType, cap_minutes, exercises: wodMoves, result_rounds, result_reps, result_time_s,
+    })
+    .select().single();
+  $('#wSave').disabled = false;
+  if (error) { toast('Erreur : ' + error.message); return; }
+  sessionWods.push(data);
+  renderSessionWods();
+  wodMoves = []; renderWodMoves();
+  $('#wCap').value = ''; $('#wRounds').value = ''; $('#wExtraReps').value = ''; $('#wTime').value = '';
+  toast('Format enregistré ✔');
+});
+
+function wodResultText(w) {
+  const parts = [];
+  if (w.result_rounds != null) parts.push(w.result_rounds + ' tour' + (w.result_rounds > 1 ? 's' : ''));
+  if (w.result_reps) parts.push('+ ' + w.result_reps + ' reps');
+  if (w.result_time_s != null) parts.push(mmss(w.result_time_s));
+  return parts.length ? parts.join(' ') : '—';
+}
+function wodMovesText(w) {
+  return (w.exercises || []).map(m => escapeHtml(m.exercice) + ' × ' + m.reps).join(' · ');
+}
+
+function renderSessionWods() {
+  const el = $('#wodList');
+  if (!sessionWods.length) { el.innerHTML = ''; return; }
+  el.innerHTML = sessionWods.map(w =>
+    '<div class="item"><span><span class="typebadge">' + WOD_LABELS[w.type] + '</span>' + wodMovesText(w) +
+    (w.cap_minutes ? '<br><span class="muted" style="font-size:.82rem">Cap ' + w.cap_minutes + ' min</span>' : '') +
+    '</span><span class="muted" style="text-align:right;white-space:nowrap">' + wodResultText(w) + '</span></div>'
+  ).join('');
+}
+
 function stopLiveSession(silent) {
   if (live.tick) clearInterval(live.tick);
   live.session = null;
@@ -865,24 +1047,83 @@ function stopLiveSession(silent) {
    ===================================================================== */
 async function loadHistory() {
   const el = $('#histSessions'); el.innerHTML = '<p class="muted">Chargement…</p>';
-  const [sRes, tRes] = await Promise.all([
+  const elWod = $('#histWod'); elWod.innerHTML = '<p class="muted">Chargement…</p>';
+  const [sRes, tRes, wRes] = await Promise.all([
     sb.from('coaching_sessions').select('*').eq('client_id', currentClient.id).order('started_at', { ascending: false }).limit(40),
     sb.from('strength_sets').select('*').eq('client_id', currentClient.id).order('recorded_at', { ascending: false }).limit(400),
+    sb.from('wod_entries').select('*').eq('client_id', currentClient.id).order('recorded_at', { ascending: false }).limit(100),
   ]);
-  const sessions = sRes.data || [], sets = tRes.data || [];
-  if (!sessions.length) { el.innerHTML = '<p class="muted">Aucune séance enregistrée pour l’instant.</p>'; return; }
-  el.innerHTML = sessions.map(s => {
-    const own = sets.filter(r => r.session_id === s.id);
-    const tonnage = own.reduce((a, r) => a + Number(r.tonnage), 0);
-    const exos = own.map(r => escapeHtml(r.exercice) + ' ' + r.kg + '×' + r.reps + (r.series > 1 ? '×' + r.series : '') + ' (1RM ' + r.e1rm + ' kg)').join(' · ');
-    return '<div class="item"><span>' + frDateTime(s.started_at) +
-      (s.duration_s ? ' · ' + mmss(s.duration_s) : '') +
-      (s.hr_avg ? ' · FC moy <b>' + s.hr_avg + '</b> pic <b>' + s.hr_peak + '</b>' : '') +
-      (own.length ? '<br><span class="muted" style="font-size:.82rem">' + exos + '</span>' : '') +
-      '</span><span class="muted" style="text-align:right;white-space:nowrap">' +
-      (tonnage ? Math.round(tonnage).toLocaleString('fr-FR') + ' kg' : '—') + '</span></div>';
+  const sessions = sRes.data || [], sets = tRes.data || [], wods = wRes.data || [];
+  if (!sessions.length) { el.innerHTML = '<p class="muted">Aucune séance enregistrée pour l’instant.</p>'; }
+  else {
+    el.innerHTML = sessions.map(s => {
+      const own = sets.filter(r => r.session_id === s.id);
+      const tonnage = own.reduce((a, r) => a + Number(r.tonnage), 0);
+      const exos = own.map(r => escapeHtml(r.exercice) + ' ' + r.kg + '×' + r.reps + (r.series > 1 ? '×' + r.series : '') + ' (1RM ' + r.e1rm + ' kg)').join(' · ');
+      return '<div class="item"><span>' + frDateTime(s.started_at) +
+        (s.duration_s ? ' · ' + mmss(s.duration_s) : '') +
+        (s.hr_avg ? ' · FC moy <b>' + s.hr_avg + '</b> pic <b>' + s.hr_peak + '</b>' : '') +
+        (own.length ? '<br><span class="muted" style="font-size:.82rem">' + exos + '</span>' : '') +
+        '</span><span class="muted" style="text-align:right;white-space:nowrap">' +
+        (tonnage ? Math.round(tonnage).toLocaleString('fr-FR') + ' kg' : '—') + '</span></div>';
+    }).join('');
+  }
+  if (!wods.length) { elWod.innerHTML = '<p class="muted">Aucun format enregistré pour l’instant.</p>'; }
+  else {
+    elWod.innerHTML = wods.map(w =>
+      '<div class="item"><span>' + frDateTime(w.recorded_at) + ' · <span class="typebadge">' + WOD_LABELS[w.type] + '</span>' +
+      wodMovesText(w) + (w.cap_minutes ? '<br><span class="muted" style="font-size:.82rem">Cap ' + w.cap_minutes + ' min</span>' : '') +
+      '</span><span class="muted" style="text-align:right;white-space:nowrap">' + wodResultText(w) + '</span></div>'
+    ).join('');
+  }
+}
+
+/* =====================================================================
+   Poids & composition corporelle
+   ===================================================================== */
+function imcOf(poids, tailleCm) {
+  if (!poids || !tailleCm) return null;
+  const m = tailleCm / 100;
+  return Math.round((poids / (m * m)) * 10) / 10;
+}
+
+async function loadBodyMetrics() {
+  const el = $('#histBody'); el.innerHTML = '<p class="muted">Chargement…</p>';
+  $('#bImcNote').textContent = currentClient.taille_cm
+    ? 'IMC calculé avec la taille renseignée (' + currentClient.taille_cm + ' cm).'
+    : 'Renseigne la taille dans « Modifier la fiche » pour voir l’IMC calculé automatiquement.';
+  const { data, error } = await sb.from('body_metrics').select('*').eq('client_id', currentClient.id).order('recorded_at', { ascending: false }).limit(60);
+  if (error) { el.innerHTML = '<p class="muted">Erreur : ' + error.message + '</p>'; return; }
+  const rows = data || [];
+  if (!rows.length) { el.innerHTML = '<p class="muted">Aucune mesure enregistrée pour l’instant.</p>'; return; }
+  el.innerHTML = rows.map(r => {
+    const imc = imcOf(r.poids_kg, currentClient.taille_cm);
+    const parts = [];
+    if (r.poids_kg != null) parts.push(r.poids_kg + ' kg');
+    if (imc != null) parts.push('IMC ' + imc);
+    if (r.masse_grasse_pct != null) parts.push(r.masse_grasse_pct + ' % masse grasse');
+    if (r.masse_musculaire_kg != null) parts.push(r.masse_musculaire_kg + ' kg muscle');
+    return '<div class="item"><span>' + frDate(r.recorded_at) + '</span><span class="muted" style="text-align:right">' +
+      (parts.join(' · ') || '—') + '</span></div>';
   }).join('');
 }
+
+$('#bAdd').addEventListener('click', async () => {
+  const poids_kg = $('#bPoids').value === '' ? null : parseFloat($('#bPoids').value);
+  const masse_grasse_pct = $('#bGraisse').value === '' ? null : parseFloat($('#bGraisse').value);
+  const masse_musculaire_kg = $('#bMuscle').value === '' ? null : parseFloat($('#bMuscle').value);
+  if (poids_kg === null && masse_grasse_pct === null && masse_musculaire_kg === null) {
+    toast('Renseigne au moins une mesure.'); return;
+  }
+  $('#bAdd').disabled = true;
+  const { error } = await sb.from('body_metrics')
+    .insert({ client_id: currentClient.id, coach_id: me.id, poids_kg, masse_grasse_pct, masse_musculaire_kg });
+  $('#bAdd').disabled = false;
+  if (error) { toast('Erreur : ' + error.message); return; }
+  $('#bPoids').value = ''; $('#bGraisse').value = ''; $('#bMuscle').value = '';
+  toast('Mesure enregistrée ✔');
+  loadBodyMetrics();
+});
 
 /* =====================================================================
    Graphiques de progression (SVG, sans dépendance)
@@ -918,13 +1159,19 @@ function lineChartSVG(series, color) {
 
 async function loadCharts() {
   const el = $('#cvCharts'); el.innerHTML = '<p class="muted">Chargement…</p>';
-  const [sRes, tRes] = await Promise.all([
+  const [sRes, tRes, bRes] = await Promise.all([
     sb.from('coaching_sessions').select('started_at,rmssd').eq('client_id', currentClient.id).order('started_at', { ascending: true }),
     sb.from('strength_sets').select('exercice,kg,reps,e1rm,tonnage,session_id,recorded_at').eq('client_id', currentClient.id).order('recorded_at', { ascending: true }),
+    sb.from('body_metrics').select('poids_kg,masse_grasse_pct,recorded_at').eq('client_id', currentClient.id).order('recorded_at', { ascending: true }),
   ]);
-  const sessions = sRes.data || [], sets = tRes.data || [];
+  const sessions = sRes.data || [], sets = tRes.data || [], bodyRows = bRes.data || [];
   const card = (title, svg) => '<div class="chartcard"><h4>' + title + '</h4>' + svg + '</div>';
   let html = '';
+
+  html += card('Poids (kg)',
+    lineChartSVG(bodyRows.filter(r => r.poids_kg != null).map(r => ({ x: +new Date(r.recorded_at), y: r.poids_kg })), '#2E82B8'));
+  html += card('Masse grasse (%)',
+    lineChartSVG(bodyRows.filter(r => r.masse_grasse_pct != null).map(r => ({ x: +new Date(r.recorded_at), y: r.masse_grasse_pct })), '#98547A'));
 
   // Tonnage total par séance
   const bySession = {};
