@@ -399,11 +399,18 @@
           </div>
           <div class="formrow" style="margin-top:.85rem">
             <div class="field">Exercice
-              <input type="text" id="wExo" list="exoList" placeholder="Burpees, wall balls…"></div>
+              <input type="text" id="wExo" list="wodExoList" placeholder="Burpees, wall balls…"></div>
             <div class="field">Répétitions
               <input type="number" id="wReps" min="1" max="500" step="1" inputmode="numeric"></div>
             <button class="btn-soft" id="wMoveAdd">Ajouter au format</button>
           </div>
+          <datalist id="wodExoList">
+            <option>Burpees</option><option>Wall Balls</option><option>Jumping Jacks</option>
+            <option>Thrusters</option><option>Skatings</option><option>Crosskicks</option>
+            <option>Corde à sauter</option><option>Squat Jumps</option><option>Superman</option>
+            <option>Climbers</option><option>Sit-ups</option><option>Roll-ins</option>
+            <option>Abdos étoiles</option><option>Toe Touch</option>
+          </datalist>
           <div class="chiplist" id="wMoves" hidden></div>
           <p class="note" style="margin-top:.7rem">Compose le format avec un ou plusieurs mouvements (ex. 10 burpees +
             15 wall balls), puis renseigne le résultat obtenu ci-dessous. Nécessite une séance démarrée.</p>
