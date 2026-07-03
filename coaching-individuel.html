@@ -345,6 +345,34 @@
         </div>
 
         <div class="panel">
+          <h3>Cardio</h3>
+          <div class="formrow">
+            <div class="field">Type
+              <input type="text" id="crType" list="cardioList" placeholder="Course à pied, vélo…"></div>
+            <div class="field">Durée (min)
+              <input type="number" id="crDuree" min="1" max="600" step="1" inputmode="numeric"></div>
+            <div class="field">Distance (km)
+              <input type="number" id="crDistance" min="0.1" max="200" step="0.1" inputmode="decimal"></div>
+            <div class="field">FC moy (bpm)
+              <input type="number" id="crFc" min="40" max="230" step="1" inputmode="numeric"></div>
+            <div class="field">Calories
+              <input type="number" id="crCal" min="0" max="3000" step="1" inputmode="numeric"></div>
+            <button class="btn-soft" id="crAdd" disabled>Ajouter</button>
+          </div>
+          <datalist id="cardioList">
+            <option>Course à pied</option><option>Vélo</option><option>Rameur</option>
+            <option>Elliptique</option><option>Marche</option><option>Corde à sauter</option>
+            <option>Tapis de course</option><option>Vélo elliptique</option>
+          </datalist>
+          <p class="note" style="margin-top:.5rem">Distance, FC moyenne et calories sont optionnelles.
+            Nécessite une séance démarrée.</p>
+          <table class="settbl" id="crTable" hidden>
+            <thead><tr><th>Type</th><th>Durée</th><th>Distance</th><th>Allure</th><th>FC moy</th><th>Cal.</th><th></th></tr></thead>
+            <tbody id="crTbody"></tbody>
+          </table>
+        </div>
+
+        <div class="panel">
           <h3>Conditionnement — AMRAP / EMOM / FOR TIME</h3>
           <div class="formrow">
             <div class="field">Format
@@ -405,6 +433,10 @@
           <div class="hist" id="histSessions"><p class="muted">Chargement…</p></div>
         </div>
         <div class="panel">
+          <h3>Cardio</h3>
+          <div class="hist" id="histCardio"><p class="muted">Chargement…</p></div>
+        </div>
+        <div class="panel">
           <h3>Formats — AMRAP / EMOM / FOR TIME</h3>
           <div class="hist" id="histWod"><p class="muted">Chargement…</p></div>
         </div>
@@ -436,9 +468,10 @@
    Ce fichier utilise le MÊME projet Supabase que l'espace adhérent
    (mêmes clés publiques, Dashboard → Project Settings → API).
    Les tables (coaching_clients, coaching_sessions, strength_sets,
-   body_metrics, wod_entries) sont installées par
-   supabase-migration-3-coaching-individuel.sql et
-   supabase-migration-4-corps-wod.sql, protégées par des règles RLS
+   body_metrics, wod_entries, cardio_entries) sont installées par
+   supabase-migration-3-coaching-individuel.sql,
+   supabase-migration-4-corps-wod.sql et
+   supabase-migration-5-cardio.sql, protégées par des règles RLS
    réservées à ton compte coach.
    ===================================================================== */
 const SUPABASE_URL      = 'https://mxdsvbrxeospfohgvzbz.supabase.co';
@@ -846,6 +879,10 @@ function resetSeanceUI() {
   $('#wodList').innerHTML = '';
   $('#wSave').disabled = true;
   $('#wRounds').value = ''; $('#wExtraReps').value = ''; $('#wTime').value = ''; $('#wCap').value = '';
+  cardioEntries = [];
+  $('#crTable').hidden = true;
+  $('#crTbody').innerHTML = '';
+  $('#crAdd').disabled = true;
 }
 
 $('#btnStart').addEventListener('click', async () => {
@@ -863,6 +900,7 @@ $('#btnStart').addEventListener('click', async () => {
   $('#btnStart').hidden = true;
   $('#btnStop').hidden = false;
   $('#sAdd').disabled = false;
+  $('#crAdd').disabled = false;
   $('#sessionBadge').classList.add('on');
   requestWakeLock();
   live.tick = setInterval(() => {
@@ -941,6 +979,61 @@ $('#setTbody').addEventListener('click', async (e) => {
   if (error) { toast('Erreur : ' + error.message); return; }
   seanceEntries = seanceEntries.filter(r => r.id !== id);
   renderSeanceEntries();
+});
+
+/* =====================================================================
+   Cardio
+   ===================================================================== */
+let cardioEntries = [];
+
+function paceText(dureeMin, distanceKm) {
+  if (!distanceKm) return '—';
+  const paceMin = dureeMin / distanceKm;
+  const m = Math.floor(paceMin), s = Math.round((paceMin - m) * 60);
+  return m + "'" + String(s).padStart(2, '0') + '/km';
+}
+
+$('#crAdd').addEventListener('click', async () => {
+  if (!currentSessionId) { toast('Démarre d’abord la séance.'); return; }
+  const type = $('#crType').value.trim();
+  const duree_min = parseFloat($('#crDuree').value);
+  const distance_km = $('#crDistance').value === '' ? null : parseFloat($('#crDistance').value);
+  const fc_moy = $('#crFc').value === '' ? null : parseInt($('#crFc').value, 10);
+  const calories = $('#crCal').value === '' ? null : parseInt($('#crCal').value, 10);
+  if (!type) { toast('Indique le type de cardio.'); return; }
+  if (!(duree_min > 0)) { toast('Renseigne la durée.'); return; }
+  $('#crAdd').disabled = true;
+  const { data, error } = await sb.from('cardio_entries')
+    .insert({ client_id: currentClient.id, session_id: currentSessionId, coach_id: me.id, type, duree_min, distance_km, fc_moy, calories })
+    .select().single();
+  $('#crAdd').disabled = false;
+  if (error) { toast('Erreur : ' + error.message); return; }
+  cardioEntries.push(data);
+  renderCardioEntries();
+  $('#crDuree').value = ''; $('#crDistance').value = ''; $('#crFc').value = ''; $('#crCal').value = '';
+  toast('Cardio ajouté ✔');
+});
+
+function renderCardioEntries() {
+  if (!cardioEntries.length) { $('#crTable').hidden = true; return; }
+  $('#crTable').hidden = false;
+  $('#crTbody').innerHTML = cardioEntries.map(r =>
+    '<tr data-id="' + r.id + '"><td>' + escapeHtml(r.type) + '</td><td>' + r.duree_min + ' min</td>' +
+    '<td>' + (r.distance_km != null ? r.distance_km + ' km' : '—') + '</td>' +
+    '<td>' + paceText(r.duree_min, r.distance_km) + '</td>' +
+    '<td>' + (r.fc_moy != null ? r.fc_moy : '—') + '</td>' +
+    '<td>' + (r.calories != null ? r.calories : '—') + '</td>' +
+    '<td><button class="btn-soft btn-sm" data-del="' + r.id + '">✕</button></td></tr>'
+  ).join('');
+}
+
+$('#crTbody').addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-del]'); if (!b) return;
+  const id = Number(b.dataset.del);
+  const { error } = await sb.from('cardio_entries').delete().eq('id', id);
+  if (error) { toast('Erreur : ' + error.message); return; }
+  cardioEntries = cardioEntries.filter(r => r.id !== id);
+  renderCardioEntries();
 });
 
 /* =====================================================================
@@ -1048,12 +1141,14 @@ function stopLiveSession(silent) {
 async function loadHistory() {
   const el = $('#histSessions'); el.innerHTML = '<p class="muted">Chargement…</p>';
   const elWod = $('#histWod'); elWod.innerHTML = '<p class="muted">Chargement…</p>';
-  const [sRes, tRes, wRes] = await Promise.all([
+  const elCardio = $('#histCardio'); elCardio.innerHTML = '<p class="muted">Chargement…</p>';
+  const [sRes, tRes, wRes, cRes] = await Promise.all([
     sb.from('coaching_sessions').select('*').eq('client_id', currentClient.id).order('started_at', { ascending: false }).limit(40),
     sb.from('strength_sets').select('*').eq('client_id', currentClient.id).order('recorded_at', { ascending: false }).limit(400),
     sb.from('wod_entries').select('*').eq('client_id', currentClient.id).order('recorded_at', { ascending: false }).limit(100),
+    sb.from('cardio_entries').select('*').eq('client_id', currentClient.id).order('recorded_at', { ascending: false }).limit(200),
   ]);
-  const sessions = sRes.data || [], sets = tRes.data || [], wods = wRes.data || [];
+  const sessions = sRes.data || [], sets = tRes.data || [], wods = wRes.data || [], cardios = cRes.data || [];
   if (!sessions.length) { el.innerHTML = '<p class="muted">Aucune séance enregistrée pour l’instant.</p>'; }
   else {
     el.innerHTML = sessions.map(s => {
@@ -1074,6 +1169,16 @@ async function loadHistory() {
       '<div class="item"><span>' + frDateTime(w.recorded_at) + ' · <span class="typebadge">' + WOD_LABELS[w.type] + '</span>' +
       wodMovesText(w) + (w.cap_minutes ? '<br><span class="muted" style="font-size:.82rem">Cap ' + w.cap_minutes + ' min</span>' : '') +
       '</span><span class="muted" style="text-align:right;white-space:nowrap">' + wodResultText(w) + '</span></div>'
+    ).join('');
+  }
+  if (!cardios.length) { elCardio.innerHTML = '<p class="muted">Aucun cardio enregistré pour l’instant.</p>'; }
+  else {
+    elCardio.innerHTML = cardios.map(c =>
+      '<div class="item"><span>' + frDateTime(c.recorded_at) + ' · ' + escapeHtml(c.type) + ' — ' + c.duree_min + ' min' +
+      (c.distance_km != null ? ' · ' + c.distance_km + ' km (' + paceText(c.duree_min, c.distance_km) + ')' : '') +
+      '</span><span class="muted" style="text-align:right;white-space:nowrap">' +
+      (c.fc_moy != null ? 'FC moy ' + c.fc_moy : '') + (c.calories != null ? (c.fc_moy != null ? ' · ' : '') + c.calories + ' kcal' : '') +
+      '</span></div>'
     ).join('');
   }
 }
@@ -1159,14 +1264,20 @@ function lineChartSVG(series, color) {
 
 async function loadCharts() {
   const el = $('#cvCharts'); el.innerHTML = '<p class="muted">Chargement…</p>';
-  const [sRes, tRes, bRes] = await Promise.all([
+  const [sRes, tRes, bRes, cRes] = await Promise.all([
     sb.from('coaching_sessions').select('started_at,rmssd').eq('client_id', currentClient.id).order('started_at', { ascending: true }),
     sb.from('strength_sets').select('exercice,kg,reps,e1rm,tonnage,session_id,recorded_at').eq('client_id', currentClient.id).order('recorded_at', { ascending: true }),
     sb.from('body_metrics').select('poids_kg,masse_grasse_pct,recorded_at').eq('client_id', currentClient.id).order('recorded_at', { ascending: true }),
+    sb.from('cardio_entries').select('duree_min,distance_km,session_id,recorded_at').eq('client_id', currentClient.id).order('recorded_at', { ascending: true }),
   ]);
-  const sessions = sRes.data || [], sets = tRes.data || [], bodyRows = bRes.data || [];
+  const sessions = sRes.data || [], sets = tRes.data || [], bodyRows = bRes.data || [], cardioRows = cRes.data || [];
   const card = (title, svg) => '<div class="chartcard"><h4>' + title + '</h4>' + svg + '</div>';
   let html = '';
+
+  const byCardioSession = {};
+  cardioRows.forEach(r => { if (!r.session_id) return; (byCardioSession[r.session_id] = byCardioSession[r.session_id] || { t: r.recorded_at, sum: 0 }).sum += Number(r.duree_min); });
+  const cardioSeries = Object.values(byCardioSession).map(v => ({ x: +new Date(v.t), y: Math.round(v.sum) })).sort((a, b) => a.x - b.x);
+  html += card('Cardio — durée totale par séance (min)', lineChartSVG(cardioSeries, '#2F8A5B'));
 
   html += card('Poids (kg)',
     lineChartSVG(bodyRows.filter(r => r.poids_kg != null).map(r => ({ x: +new Date(r.recorded_at), y: r.poids_kg })), '#2E82B8'));
